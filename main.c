@@ -4,13 +4,24 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <fcntl.h>
+
+//Tokenization
+int tokenize(char *input,char *tokens[]);
+//Handler
+int handle_builtin(char *tokens[],int token_count);
+//Redirection Handler
+void handle_redirection(char *tokens[],int token_count);
+//Execution
+void execute_command(char *tokens[],int token_count);
+
 
 int main(void){
   char input[1024];
   char * tokens[100]; // Array to hold pointers to tokens 
-  int token_count;
 
   while(1){
+
     printf("myshell> ");
     fflush(stdout);
     if(fgets(input, sizeof(input), stdin) == NULL){ // fgets returns NULL if it encounters EOF or an error
@@ -18,36 +29,150 @@ int main(void){
       break;
     }
 
+    // Tokenization
+    int token_count = tokenize(input,tokens);
 
-    token_count=0; // Reset token count for each new input
-    char * token = strtok(input, " \v\f\r\t\n");
-    while(token != NULL){
-      tokens[token_count++] = token; // Store the token in the array and increment the count
-      if(token_count >= 100){ // Prevent overflow of the tokens array
-        fprintf(stderr, "Too many tokens, maximum is 100.\n");
-        break;
-      }
-      token = strtok(NULL, " \v\f\r\t\n"); // The Null pointer tells strtok to continue from the previous position
-    }
-    tokens[token_count] = NULL; // Null-terminate the array of tokens
-
-    pid_t pid = fork();
-    if(pid < 0){
-      perror("Fork failed");
-      exit(EXIT_FAILURE);
-    } else if(pid == 0){
-      // Child process
-      execvp(tokens[0], tokens); // Execute the command with the tokens as arguments
-      perror("Execution failed"); // If execvp returns, it means it failed
-      exit(EXIT_FAILURE);
-    } else {
-      // Parent process
-      wait(NULL); // Wait for the child process to finish
+    //Handle empty input
+    if(token_count==0){
+      continue;
     }
     
-    for(int i=0; i<token_count; i++){
-      printf("Token %d: %s\n", i, tokens[i]);
+    if(handle_builtin(tokens,token_count)){
+      continue;
     }
+
+    execute_command(tokens,token_count);
   }
   return 0;
+}
+
+int tokenize(char *input,char *tokens[]){
+  int token_count=0; 
+  char * token = strtok(input, " \v\f\r\t\n");
+  while(token != NULL){
+    tokens[token_count++] = token; // Store the token in the array and increment the count
+    if(token_count >= 100){ // Prevent overflow of the tokens array
+      fprintf(stderr, "Too many tokens, maximum is 100.\n");
+      break;
+    }
+    token = strtok(NULL, " \v\f\r\t\n"); // The Null pointer tells strtok to continue from the previous position
+  }
+  tokens[token_count] = NULL; // Null-terminate the array of tokens
+  return token_count;
+}
+
+
+int handle_builtin(char *tokens[],int token_count){
+
+  // Handles exit
+  if(strcmp(tokens[0], "exit") == 0){
+    printf("Exiting shell.\n");
+    exit(0);
+  }
+
+  // Handles cd
+  if(strcmp(tokens[0], "cd")==0){
+    if(token_count < 2){
+      char* home = getenv("HOME");
+
+      if(home == NULL){
+        fprintf(stderr, "cd: HOME environment variable not set\n");
+      }
+      else{
+        if(chdir(home) != 0){
+          perror("cd");
+        }
+      }
+    }
+    else if(token_count > 2){
+      fprintf(stderr, "cd: too many arguments\n");
+    }else{
+      if(chdir(tokens[1]) != 0){
+        perror("cd");
+      }
+    }
+    return 1;
+  }
+  return 0;
+}
+
+
+void handle_redirection(char *tokens[],int token_count){
+  //Handles redirection to input , output and append , deletes related tokens for smooth execution forward
+  for(int i=0;i<token_count;i++){
+    if(strcmp(tokens[i], ">")==0){
+      if(tokens[i+1]==NULL){
+        printf("Syntax error: missing file\n");
+        exit(1);
+      }
+      int file_desc = open(tokens[i+1], O_WRONLY | O_CREAT | O_TRUNC , 0644);
+      if(file_desc < 0){
+        perror(tokens[i+1]);
+        exit(1);
+      }
+      dup2(file_desc,STDOUT_FILENO);
+      close(file_desc);
+      for(int j=i;j<token_count-2;j++){
+        tokens[j]=tokens[j+2];
+      }
+      token_count -= 2;
+      tokens[token_count]=NULL;
+      i--;
+    }else if(strcmp(tokens[i], ">>")==0){
+      if(tokens[i+1]==NULL){
+        printf("Syntax error: missing file\n");
+        exit(1);
+      }
+      int file_desc = open(tokens[i+1], O_WRONLY | O_CREAT | O_APPEND , 0644);
+      if(file_desc < 0){
+        perror(tokens[i+1]);
+        exit(1);
+      }
+      dup2(file_desc,STDOUT_FILENO);
+      close(file_desc);
+      for(int j=i;j<token_count-2;j++){
+        tokens[j]=tokens[j+2];
+      }
+      token_count -= 2;
+      tokens[token_count]=NULL;
+      i--;
+    }
+    else if(strcmp(tokens[i], "<")==0){
+      if(tokens[i+1]==NULL){
+        printf("Syntax error: missing file\n");
+        exit(1);
+      }
+      int file_desc = open(tokens[i+1], O_RDONLY);
+      if(file_desc < 0){
+        perror(tokens[i+1]);
+        exit(1);
+      }
+      dup2(file_desc,STDIN_FILENO);
+      close(file_desc);
+      for(int j=i;j<token_count-2;j++){
+        tokens[j]=tokens[j+2];
+      }
+      token_count -= 2;
+      tokens[token_count]=NULL;
+      i--;
+    }
+  }
+}
+
+void execute_command(char *tokens[],int token_count){
+  // Handles command execution via forking and execvp
+  pid_t pid = fork();
+  if(pid < 0){
+    perror("Fork failed");
+    exit(EXIT_FAILURE);
+  } else if(pid == 0){
+    // Child process
+    handle_redirection(tokens,token_count);
+    execvp(tokens[0], tokens); // Execute the command with the tokens as arguments
+    perror("Execution failed"); // If execvp returns, it means it failed
+    exit(EXIT_FAILURE);
+  } else {
+    // Parent process
+    wait(NULL); // Wait for the child process to finish
+  }
 }
