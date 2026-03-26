@@ -1,22 +1,22 @@
-# 🖥️ Unix Shell (C)
+# 🖥️ Unix Shell in C
 
-A custom Unix-like shell built from scratch in C, implementing core operating system concepts such as process management, inter-process communication, and signal handling.
+A fully functional Unix-like shell built from scratch in C, implementing core operating system concepts such as process management, inter-process communication, and signal handling.
 
 ---
 
 ## 🚀 Features
 
-* 🔹 Command execution using `fork()` and `execvp()`
+* 🔹 Execute system commands using `fork()` and `execvp()`
 * 🔹 Built-in commands:
 
   * `cd`
   * `exit`
 * 🔹 Input/Output Redirection:
 
-  * `>` (overwrite)
-  * `>>` (append)
-  * `<` (input)
-* 🔹 Multiple Pipes:
+  * `>` overwrite output
+  * `>>` append output
+  * `<` input redirection
+* 🔹 Multi-stage Pipelines:
 
   ```bash
   ls | grep txt | wc
@@ -28,28 +28,28 @@ A custom Unix-like shell built from scratch in C, implementing core operating sy
   ```
 * 🔹 Signal Handling:
 
-  * Ctrl+C (`SIGINT`) does NOT terminate the shell
-  * Proper handling of foreground processes
+  * Ctrl+C (`SIGINT`) handled correctly
+  * Shell remains active while terminating foreground processes
 
 ---
 
-## 🧠 Concepts Implemented
+## 🧠 Core Concepts Demonstrated
 
-This project demonstrates strong understanding of:
+This project showcases strong understanding of:
 
 * Process creation (`fork`)
 * Program execution (`execvp`)
 * Inter-process communication (`pipe`)
 * File descriptor manipulation (`dup2`)
 * Signal handling (`SIGINT`)
-* Foreground vs background execution
+* Concurrent execution (foreground vs background)
 * Command parsing and tokenization
 
 ---
 
 ## 📁 Project Structure
 
-```
+```bash
 unixshell/
 ├── src/
 │   ├── main.c
@@ -69,19 +69,19 @@ unixshell/
 
 ## 🛠️ Build & Run
 
-### Compile:
+### Compile
 
 ```bash
 make
 ```
 
-### Run:
+### Run
 
 ```bash
 ./unixshell
 ```
 
-### Clean:
+### Clean
 
 ```bash
 make clean
@@ -105,34 +105,37 @@ myshell> sleep 5 &
 
 * No job control (`fg`, `bg`)
 * No command history
-* Limited error handling for complex syntax
+* Limited syntax error handling
 
 ---
 
 ## 📈 Future Improvements
 
 * Job control (foreground/background switching)
-* Command history and navigation
-* Tab auto-completion
+* Command history support
+* Auto-completion
 * Advanced parsing (quotes, escape characters)
 
 ---
 
-## 💡 Author Notes
-
-This project was built to deeply understand how Unix shells work internally, focusing on system-level programming rather than relying on libraries.
-
----
-
-## ⭐ Why this project stands out
+## 💡 Why this project stands out
 
 * Implements **multi-process pipelines**
 * Handles **low-level file descriptor manipulation**
-* Demonstrates **real OS concepts**, not just syntax
-* Clean modular structure (parser, executor, redirection)
+* Demonstrates **real OS concepts (not just syntax)**
+* Clean modular architecture
 
 ---
 
-## 📜 License
+## 👨‍💻 Author
 
-MIT License
+Built as a systems programming project to understand how real Unix shells work internally.
+
+---
+
+## ⭐ If you like this project
+
+Give it a star ⭐ — it helps!
+## 📸 Demo
+
+![Demo](https://github.com/user-attachments/assets/bc1c6e78-1e9a-4180-aaa9-97f39f122a12)
